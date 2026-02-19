@@ -9,6 +9,7 @@ public struct NavigationButton<Content: View, D: NavigationDestination>: View {
 
 	@ViewBuilder var content: () -> Content
 	@Environment(Router<D>.self) private var router
+	@Environment(\.isNavigationEnabled) private var isNavigationEnabled
 
 	/// Creates a new `NavigationButton`.
 	/// - Parameter destination: The destination to navigate to when the button is tapped.
@@ -54,7 +55,7 @@ public struct NavigationButton<Content: View, D: NavigationDestination>: View {
 		Button(action: navigate) {
 			content()
 		}
-		.disabled(destination == nil)
+		.disabled(destination == nil || !isNavigationEnabled)
 	}
 
 	private func navigate() {

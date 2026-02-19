@@ -68,10 +68,4 @@ private struct InnerContainer<Content: View, D: NavigationDestination>: View {
 			router.handleURL(url)
 		}
 	}
-
-	@ViewBuilder func navigationView(for destination: D.Sheets, from router: Router<D>) -> some View {
-		NavigationContainer(parentRouter: router) {
-			destination.view
-		}
-	}
 }
