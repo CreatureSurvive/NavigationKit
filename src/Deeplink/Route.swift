@@ -13,6 +13,17 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 
 	/// Creates a route with the given segments and factory.
 	public init(segments: [PathSegment], factory: @escaping @Sendable ([String: Any]) -> Deeplink?) {
+		precondition(
+			segments.dropLast().allSatisfy { !$0.isWildcard },
+			"Wildcard segment must be the last segment in a route"
+		)
+
+		let names = paramNames(from: segments)
+		precondition(
+			names.count == Set(names).count,
+			"Parameter names must be unique within a route"
+		)
+
 		self.segments = segments
 		self.factory = factory
 	}
@@ -22,8 +33,7 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 	///   - segments: The path segments to match.
 	///   - factory: A closure that returns the deeplink.
 	public init(_ segments: PathSegment..., factory: @escaping @Sendable () -> Deeplink) {
-		self.segments = segments
-		self.factory = { _ in factory() }
+		self.init(segments: segments, factory: { _ in factory() })
 	}
 
 	/// Creates a route with one parameter.
@@ -37,11 +47,12 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 		_ s2: PathSegment,
 		factory: @escaping @Sendable (P1) -> Deeplink
 	) {
-		segments = [s1, s2]
-		self.factory = { params in
-			guard let p1 = params.values.first as? P1 else { return nil }
+		let names = paramNames(from: [s1, s2])
+		precondition(names.count >= 1, "Route with 1 type parameter requires at least 1 parameter/wildcard segment")
+		self.init(segments: [s1, s2], factory: { params in
+			guard let p1 = params[names[0]] as? P1 else { return nil }
 			return factory(p1)
-		}
+		})
 	}
 
 	/// Creates a route with one parameter (single segment).
@@ -52,11 +63,12 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 		_ s1: PathSegment,
 		factory: @escaping @Sendable (P1) -> Deeplink
 	) {
-		segments = [s1]
-		self.factory = { params in
-			guard let p1 = params.values.first as? P1 else { return nil }
+		let names = paramNames(from: [s1])
+		precondition(names.count >= 1, "Route with 1 type parameter requires at least 1 parameter/wildcard segment")
+		self.init(segments: [s1], factory: { params in
+			guard let p1 = params[names[0]] as? P1 else { return nil }
 			return factory(p1)
-		}
+		})
 	}
 
 	/// Creates a route with two parameters.
@@ -71,15 +83,14 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 		_ s3: PathSegment,
 		factory: @escaping @Sendable (P1, P2) -> Deeplink
 	) {
-		segments = [s1, s2, s3]
-		self.factory = { params in
-			let values = Array(params.values)
-			guard values.count >= 2,
-			      let p1 = values[0] as? P1,
-			      let p2 = values[1] as? P2
+		let names = paramNames(from: [s1, s2, s3])
+		precondition(names.count >= 2, "Route with 2 type parameters requires at least 2 parameter/wildcard segments")
+		self.init(segments: [s1, s2, s3], factory: { params in
+			guard let p1 = params[names[0]] as? P1,
+			      let p2 = params[names[1]] as? P2
 			else { return nil }
 			return factory(p1, p2)
-		}
+		})
 	}
 
 	/// Creates a route with three parameters.
@@ -96,16 +107,15 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 		_ s4: PathSegment,
 		factory: @escaping @Sendable (P1, P2, P3) -> Deeplink
 	) {
-		segments = [s1, s2, s3, s4]
-		self.factory = { params in
-			let values = Array(params.values)
-			guard values.count >= 3,
-			      let p1 = values[0] as? P1,
-			      let p2 = values[1] as? P2,
-			      let p3 = values[2] as? P3
+		let names = paramNames(from: [s1, s2, s3, s4])
+		precondition(names.count >= 3, "Route with 3 type parameters requires at least 3 parameter/wildcard segments")
+		self.init(segments: [s1, s2, s3, s4], factory: { params in
+			guard let p1 = params[names[0]] as? P1,
+			      let p2 = params[names[1]] as? P2,
+			      let p3 = params[names[2]] as? P3
 			else { return nil }
 			return factory(p1, p2, p3)
-		}
+		})
 	}
 
 	/// Attempts to match a URL against this route's pattern.
@@ -114,20 +124,36 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 	func match(_ url: URL) -> Deeplink? {
 		var components = url.pathComponents.filter { $0 != "/" }
 		if let host = url.host() { components.insert(host, at: 0) }
-		guard components.count == segments.count else { return nil }
+
+		if segments.last?.isWildcard == true {
+			guard components.count >= segments.count - 1 else { return nil }
+		} else {
+			guard components.count == segments.count else { return nil }
+		}
 
 		var capturedParams: [String: Any] = [:]
 
-		for (segment, component) in zip(segments, components) {
-			guard let result = segment.match(component) else { return nil }
+		for (index, segment) in segments.enumerated() {
+			switch segment {
+				case let .wildcard(name, type):
+					let remaining = components[index...].joined(separator: "/")
+					guard let value = type.fromParameterString(remaining) else { return nil }
+					capturedParams[name] = value
 
-			if case let .parameter(name, _) = segment {
-				capturedParams[name] = result
+				case .literal, .parameter:
+					guard let result = segment.match(components[index]) else { return nil }
+					if case let .parameter(name, _) = segment {
+						capturedParams[name] = result
+					}
 			}
 		}
 
 		return factory(capturedParams)
 	}
+}
+
+private func paramNames(from segments: [PathSegment]) -> [String] {
+	segments.compactMap(\.name)
 }
 
 /// A collection of routes that can be used to match URLs.

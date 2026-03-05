@@ -19,6 +19,10 @@ public extension DeeplinkParameter {
 	static func parameter(_ name: String) -> PathSegment {
 		.parameter(name: name, type: Self.self)
 	}
+
+	static func wildcard(_ name: String) -> PathSegment {
+		.wildcard(name: name, type: Self.self)
+	}
 }
 
 extension Int: DeeplinkParameter {
