@@ -5,7 +5,7 @@ import SwiftUI
 /// /// For convenience, it's recommended to typealias `NavigationContainer` with your app's specific `NavigationDestination` type.
 public struct NavigationContainer<Content: View, D: NavigationDestination>: View {
 	/// The router managing navigation within this container
-	@State var router: Router<D>
+	@State private var router: Router<D>
 
 	/// The content view displayed within the navigation container
 	@ViewBuilder var content: () -> Content
@@ -29,7 +29,7 @@ public struct NavigationContainer<Content: View, D: NavigationDestination>: View
 	}
 }
 
-// This is necessary for getting a binder from an Environment Observable object
+/// This is necessary for getting a binder from an Environment Observable object
 private struct InnerContainer<Content: View, D: NavigationDestination>: View {
 	@Bindable var router: Router<D>
 	@ViewBuilder var content: () -> Content
@@ -60,7 +60,7 @@ private struct InnerContainer<Content: View, D: NavigationDestination>: View {
 			isPresented: router[alert: \.presentingAlert],
 			presenting: router.presentingAlert,
 			actions: { AnyView($0.alert.actions) },
-			message: { $0.alert.message.map { Text($0) } }
+			message: { $0.alert.message }
 		)
 		.onOpenURL { url in
 			guard router.level == 1 else { return }

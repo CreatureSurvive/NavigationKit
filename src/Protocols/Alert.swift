@@ -7,10 +7,10 @@ import SwiftUI
 	associatedtype Actions: View
 
 	/// The title of the alert.
-	var title: String { get }
+	var title: LocalizedStringKey { get }
 
 	/// The optional message of the alert.
-	var message: String? { get }
+	var message: Text? { get }
 
 	/// The actions to be displayed in the alert.
 	@ViewBuilder var actions: Actions { get }

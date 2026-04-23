@@ -38,7 +38,7 @@ public final class Router<D: NavigationDestination> {
 	public private(set) weak var parent: Router?
 
 	/// Indicates whether the router is currently active.
-	public private(set) var isActive: Bool = false
+	public private(set) var isActive = false
 
 	/// Initializes a new router instance.
 	///

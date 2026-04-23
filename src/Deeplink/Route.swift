@@ -41,7 +41,6 @@ public struct Route<Deeplink: DeeplinkRepresentable>: Sendable {
 	///   - s1: First path segment.
 	///   - s2: Second path segment (parameter).
 	///   - factory: A closure that takes the captured parameter and returns the deeplink.
-
 	public init<P1: DeeplinkParameter>(
 		_ s1: PathSegment,
 		_ s2: PathSegment,
