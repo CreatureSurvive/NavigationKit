@@ -39,6 +39,7 @@ private struct InnerContainer<Content: View, D: NavigationDestination>: View {
 			content()
 				.navigationDestination(for: D.Pages.self) { destination in
 					destination.view
+                        .environment(router)
 				}
 		}
 		// it's important that the these modifiers are **outside** the `NavigationStack`
